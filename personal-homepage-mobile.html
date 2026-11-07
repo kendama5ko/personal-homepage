@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パーソナルホームページ（モバイル版）</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+        }
+        .window {
+            position: absolute;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--window-color, #f0f0f0);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-width: 200px;
+            min-height: 100px;
+            overflow: hidden;
+        }
+        .window-header {
+            background-color: color-mix(in srgb, var(--window-color, #f0f0f0) 78%, #000000);
+            padding: 5px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex: 0 0 auto;
+            touch-action: none;
+            user-select: none;
+        }
+        .window-title {
+            margin: 0;
+            font-size: 16px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .window-controls {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+        }
+        .window-controls button {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        .window-color-picker {
+            width: 30px;
+            height: 24px;
+            margin-left: 5px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+        .window-content {
+            padding: 10px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .window-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            gap: 4px;
+            z-index: 10;
+        }
+        .window-actions button,
+        .edit-title-btn,
+        .delete-btn {
+            cursor: pointer;
+        }
+        .content {
+            margin-top: 25px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .site-link {
+            display: block;
+            margin: 4px 0;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            bottom: 0;
+            right: 0;
+            cursor: se-resize;
+            touch-action: none;
+            z-index: 2;
+        }
+        #addWindowBtn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            padding: 10px 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #backgroundControls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        /* モーダルウィンドウのスタイル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 5px;
+        }
+        .modal-form[hidden] {
+            display: none;
+        }
+        .modal-form label {
+            display: block;
+            margin: 10px 0;
+        }
+        .modal-form input {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 6px;
+        }
+        .field-help {
+            display: block;
+            margin-top: 5px;
+            color: #555;
+            font-size: 13px;
+        }
+        .modal-error {
+            color: #b00020;
+            margin: 10px 0;
+        }
+        .status-message {
+            position: fixed;
+            left: 20px;
+            bottom: 64px;
+            z-index: 1100;
+            max-width: min(80vw, 600px);
+            padding: 10px 14px;
+            border-radius: 5px;
+            background: #fff3cd;
+            color: #664d03;
+        }
+        #undoDeleteBtn {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 1100;
+            padding: 10px 14px;
+            border: 0;
+            border-radius: 5px;
+            background: #245c3a;
+            color: white;
+            cursor: pointer;
+        }
+        #undoDeleteBtn[hidden] {
+            display: none;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #editTextarea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        @media (max-width: 700px) {
+            body {
+                padding: 12px 0 84px;
+                overflow-x: hidden;
+            }
+            #backgroundControls {
+                position: static;
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin: 0 12px 12px;
+            }
+            #backgroundControls h4 {
+                flex: 1 0 100%;
+                margin: 0;
+            }
+            #backgroundControls input[type="file"] {
+                flex: 1 0 100%;
+                max-width: 100%;
+            }
+            #backgroundControls button,
+            #addWindowBtn,
+            #undoDeleteBtn,
+            .window button,
+            #saveEditBtn {
+                min-height: 44px;
+            }
+            .window {
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                width: calc(100% - 24px) !important;
+                height: auto !important;
+                min-width: 0;
+                min-height: 210px;
+                margin: 12px;
+            }
+            .window-header {
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 8px;
+            }
+            .window-title {
+                flex: 1 0 100%;
+                font-size: 18px;
+            }
+            .window-controls {
+                width: 100%;
+                justify-content: flex-end;
+                gap: 4px;
+            }
+            .window-controls button {
+                min-width: 58px;
+                margin-left: 0;
+            }
+            .window-color-picker {
+                width: 44px;
+                height: 40px;
+                margin: 0 auto 0 0;
+            }
+            .window-content {
+                min-height: 140px;
+                max-height: 55vh;
+                padding: 12px;
+                overflow-y: auto;
+            }
+            .window-actions {
+                position: static;
+                justify-content: flex-end;
+                margin-bottom: 8px;
+            }
+            .content {
+                margin-top: 0;
+            }
+            .resize-handle {
+                display: none;
+            }
+            #addWindowBtn {
+                right: 12px;
+                bottom: 12px;
+                max-width: 54vw;
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+            #undoDeleteBtn {
+                left: 12px;
+                bottom: 12px;
+                max-width: 42vw;
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+            .status-message {
+                left: 12px;
+                right: 12px;
+                bottom: 68px;
+                max-width: none;
+                box-sizing: border-box;
+            }
+            .modal {
+                align-items: center;
+                justify-content: center;
+                padding: 12px;
+                box-sizing: border-box;
+            }
+            .modal-content {
+                width: 100%;
+                max-width: 600px;
+                max-height: calc(100vh - 24px);
+                max-height: calc(100dvh - 24px);
+                box-sizing: border-box;
+                margin: auto;
+                padding: 16px;
+                overflow-y: auto;
+            }
+            #editTextarea {
+                height: 35vh;
+            }
+            .modal-form input {
+                min-height: 44px;
+                font-size: 16px;
+            }
+            #saveEditBtn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="backgroundControls">
+        <h4>背景設定</h4>
+        <input type="color" id="bgColorPicker" value="#ffffff" title="背景色を選択">
+        <input type="file" id="bgImagePicker" accept="image/*">
+        <button id="resetBgBtn">リセット</button>
+    </div>
+
+    <button id="addWindowBtn">新しいウィンドウを追加</button>
+
+    <!-- モーダルウィンドウ -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">コンテンツを編集</h2>
+            <div id="contentEditForm" class="modal-form">
+                <textarea id="editTextarea"></textarea>
+            </div>
+            <div id="titleEditForm" class="modal-form" hidden>
+                <label>タイトル
+                    <input type="text" id="editTitleInput">
+                </label>
+            </div>
+            <div id="siteEditForm" class="modal-form" hidden>
+                <label>サイト名（省略可）
+                    <input type="text" id="siteNameInput" placeholder="サイト名">
+                </label>
+                <label>URL
+                    <input type="text" id="siteUrlInput" placeholder="https://example.com または ./ファイル.pdf" required>
+                    <small class="field-help">ローカルファイルは相対パス（例: ./資料/メモ.pdf）または file:///C:/... を指定できます。HTMLとファイルを同じフォルダー構成のまま置いてください。</small>
+                </label>
+            </div>
+            <p id="deleteConfirmation" class="modal-form" hidden>このウィンドウを削除しますか？</p>
+            <p id="modalError" class="modal-error" role="alert" hidden></p>
+            <button id="saveEditBtn">保存</button>
+        </div>
+    </div>
+    <div id="appStatus" class="status-message" role="status" hidden></div>
+    <button id="undoDeleteBtn" type="button" hidden>削除を元に戻す</button>
+
+    <script>
+        let nextWindowId = 1;
+        let nextZIndex = 1;
+        let currentEditingWindow = null;
+        let currentEditingMode = null;
+
+        function createWindow(title = 'New Window', content = '', left = 20, top = 20, width = 200, height = 100, color = '#f0f0f0', persist = true) {
+            const windowElement = document.createElement('div');
+            windowElement.className = 'window';
+            windowElement.id = `window_${nextWindowId++}`;
+            windowElement.dataset.layoutLeft = Number.isFinite(Number(left)) ? Math.max(0, Number(left)) : 20;
+            windowElement.dataset.layoutTop = Number.isFinite(Number(top)) ? Math.max(0, Number(top)) : 20;
+            windowElement.dataset.layoutWidth = Math.max(200, Number(width) || 200);
+            windowElement.dataset.layoutHeight = Math.max(100, Number(height) || 100);
+            const safeLeft = Number.isFinite(Number(left))
+                ? Math.max(0, Math.min(Math.max(0, window.innerWidth - 200), Number(left)))
+                : 20;
+            const safeTop = Number.isFinite(Number(top))
+                ? Math.max(0, Math.min(Math.max(0, window.innerHeight - 100), Number(top)))
+                : 20;
+            const safeWidth = Math.max(200, Math.min(Number(width) || 200, Math.max(200, window.innerWidth - safeLeft)));
+            const safeHeight = Math.max(100, Math.min(Number(height) || 100, Math.max(100, window.innerHeight - safeTop)));
+            windowElement.style.left = `${safeLeft}px`;
+            windowElement.style.top = `${safeTop}px`;
+            windowElement.style.width = `${safeWidth}px`;
+            windowElement.style.height = `${safeHeight}px`;
+            windowElement.style.zIndex = nextZIndex++;
+            const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : '#f0f0f0';
+            windowElement.style.setProperty('--window-color', safeColor);
+
+            windowElement.innerHTML = `
+                <div class="window-header">
+                    <h3 class="window-title"></h3>
+                    <div class="window-controls">
+                        <input class="window-color-picker" type="color" aria-label="ウィンドウの色を選択" title="ウィンドウの色を選択">
+                        <button class="edit-title-btn" type="button">タイトル</button>
+                        <button class="delete-btn" type="button">削除</button>
+                    </div>
+                </div>
+                <div class="window-content">
+                    <div class="window-actions">
+                        <button class="add-site-btn" type="button">サイト追加</button>
+                        <button class="edit-content-btn" type="button">編集</button>
+                    </div>
+                    <div class="content"></div>
+                </div>
+                <div class="resize-handle" aria-label="サイズ変更"></div>
+            `;
+            windowElement.querySelector('.window-title').textContent = String(title ?? '');
+            windowElement.querySelector('.content').innerHTML = sanitizeContent(content);
+
+            document.body.appendChild(windowElement);
+
+            const header = windowElement.querySelector('.window-header');
+            const resizeHandle = windowElement.querySelector('.resize-handle');
+            const editTitleBtn = windowElement.querySelector('.edit-title-btn');
+            const deleteBtn = windowElement.querySelector('.delete-btn');
+            const editContentBtn = windowElement.querySelector('.edit-content-btn');
+            const addSiteBtn = windowElement.querySelector('.add-site-btn');
+            const colorPicker = windowElement.querySelector('.window-color-picker');
+            colorPicker.value = safeColor;
+
+            makeDraggable(windowElement, header);
+            makeResizable(windowElement, resizeHandle);
+
+            colorPicker.addEventListener('input', () => {
+                windowElement.style.setProperty('--window-color', colorPicker.value);
+                saveWindows();
+            });
+            editTitleBtn.addEventListener('click', () => editTitle(windowElement));
+            deleteBtn.addEventListener('click', () => deleteWindow(windowElement));
+            editContentBtn.addEventListener('click', () => openEditModal(windowElement));
+            addSiteBtn.addEventListener('click', () => addSite(windowElement));
+            windowElement.addEventListener('pointerdown', () => focusWindow(windowElement));
+
+            if (persist) {
+                saveWindows();
+            }
+            return windowElement;
+        }
+
+        function focusWindow(element) {
+            element.style.zIndex = nextZIndex++;
+        }
+
+        function makeDraggable(element, handle) {
+            let dragStart = null;
+
+            handle.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0 || e.target.closest('button, input')) {
+                    return;
+                }
+                e.preventDefault();
+                focusWindow(element);
+                dragStart = {
+                    pointerId: e.pointerId,
+                    x: e.clientX,
+                    y: e.clientY,
+                    left: element.offsetLeft,
+                    top: element.offsetTop
+                };
+                handle.setPointerCapture(e.pointerId);
+            });
+
+            handle.addEventListener('pointermove', (e) => {
+                if (!dragStart || e.pointerId !== dragStart.pointerId) {
+                    return;
+                }
+                const maxLeft = Math.max(0, window.innerWidth - element.offsetWidth);
+                const maxTop = Math.max(0, window.innerHeight - element.offsetHeight);
+                element.style.left = `${Math.max(0, Math.min(maxLeft, dragStart.left + e.clientX - dragStart.x))}px`;
+                element.style.top = `${Math.max(0, Math.min(maxTop, dragStart.top + e.clientY - dragStart.y))}px`;
+            });
+
+            const finishDrag = (e) => {
+                if (!dragStart || e.pointerId !== dragStart.pointerId) {
+                    return;
+                }
+                dragStart = null;
+                saveWindows();
+            };
+            handle.addEventListener('pointerup', finishDrag);
+            handle.addEventListener('pointercancel', finishDrag);
+        }
+
+        function makeResizable(element, handle) {
+            let resizePointerId = null;
+            handle.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) {
+                    return;
+                }
+                e.preventDefault();
+                e.stopPropagation();
+                resizePointerId = e.pointerId;
+                focusWindow(element);
+                handle.setPointerCapture(e.pointerId);
+            });
+
+            handle.addEventListener('pointermove', (e) => {
+                if (e.pointerId !== resizePointerId) {
+                    return;
+                }
+                const maxWidth = Math.max(200, window.innerWidth - element.offsetLeft);
+                const maxHeight = Math.max(100, window.innerHeight - element.offsetTop);
+                element.style.width = `${Math.max(200, Math.min(maxWidth, e.clientX - element.offsetLeft))}px`;
+                element.style.height = `${Math.max(100, Math.min(maxHeight, e.clientY - element.offsetTop))}px`;
+            });
+
+            const finishResize = (e) => {
+                if (e.pointerId !== resizePointerId) {
+                    return;
+                }
+                resizePointerId = null;
+                saveWindows();
+            };
+            handle.addEventListener('pointerup', finishResize);
+            handle.addEventListener('pointercancel', finishResize);
+        }
+
+        function editTitle(windowElement) {
+            showEditModal(windowElement, 'title');
+        }
+
+        function addSite(windowElement) {
+            showEditModal(windowElement, 'site');
+        }
+
+        function sanitizeContent(html) {
+            const allowedTags = new Set([
+                'A', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'DIV', 'EM', 'H1', 'H2', 'H3',
+                'H4', 'H5', 'H6', 'I', 'LI', 'OL', 'P', 'PRE', 'SPAN', 'STRONG', 'UL'
+            ]);
+            const parsed = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
+
+            function cleanNode(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return document.createTextNode(node.textContent);
+                }
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return document.createDocumentFragment();
+                }
+
+                const source = node;
+                if (!allowedTags.has(source.tagName)) {
+                    const fragment = document.createDocumentFragment();
+                    source.childNodes.forEach(child => fragment.appendChild(cleanNode(child)));
+                    return fragment;
+                }
+
+                const clean = document.createElement(source.tagName.toLowerCase());
+                if (source.tagName === 'A') {
+                    try {
+                        const url = new URL(source.getAttribute('href'), window.location.href);
+                        if (url.protocol === 'http:' || url.protocol === 'https:' ||
+                            (url.protocol === 'file:' && window.location.protocol === 'file:')) {
+                            clean.href = url.href;
+                            clean.target = '_blank';
+                            clean.rel = 'noopener noreferrer';
+                        }
+                    } catch (error) {
+                        // Invalid links are kept as text without a destination.
+                    }
+                    if (source.classList.contains('site-link')) {
+                        clean.className = 'site-link';
+                    }
+                }
+                source.childNodes.forEach(child => clean.appendChild(cleanNode(child)));
+                return clean;
+            }
+
+            const result = document.createElement('div');
+            parsed.body.childNodes.forEach(child => result.appendChild(cleanNode(child)));
+            return result.innerHTML;
+        }
+
+        function openEditModal(windowElement) {
+            showEditModal(windowElement, 'content');
+        }
+
+        function showEditModal(windowElement, mode) {
+            currentEditingWindow = windowElement;
+            currentEditingMode = mode;
+            const modal = document.getElementById('editModal');
+            document.getElementById('contentEditForm').hidden = mode !== 'content';
+            document.getElementById('titleEditForm').hidden = mode !== 'title';
+            document.getElementById('siteEditForm').hidden = mode !== 'site';
+            document.getElementById('deleteConfirmation').hidden = mode !== 'delete';
+            document.getElementById('modalError').hidden = true;
+            document.getElementById('modalError').textContent = '';
+            document.getElementById('saveEditBtn').textContent = mode === 'delete' ? '削除' : '保存';
+            document.getElementById('modalTitle').textContent = {
+                content: 'コンテンツを編集',
+                title: 'タイトルを編集',
+                site: 'サイトを追加',
+                delete: 'ウィンドウを削除'
+            }[mode];
+
+            if (mode === 'content') {
+                document.getElementById('editTextarea').value = windowElement.querySelector('.content').innerHTML;
+            } else if (mode === 'title') {
+                document.getElementById('editTitleInput').value = windowElement.querySelector('.window-title').textContent;
+            } else {
+                document.getElementById('siteNameInput').value = '';
+                document.getElementById('siteUrlInput').value = '';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'none';
+            currentEditingWindow = null;
+            currentEditingMode = null;
+        }
+
+        function saveEditContent() {
+            if (!currentEditingWindow) {
+                return;
+            }
+            if (currentEditingMode === 'content') {
+                const contentElement = currentEditingWindow.querySelector('.content');
+                contentElement.innerHTML = sanitizeContent(document.getElementById('editTextarea').value);
+            } else if (currentEditingMode === 'title') {
+                currentEditingWindow.querySelector('.window-title').textContent =
+                    document.getElementById('editTitleInput').value;
+            } else if (currentEditingMode === 'site') {
+                const rawUrl = document.getElementById('siteUrlInput').value.trim();
+                let url;
+                try {
+                    const windowsPath = /^[a-z]:[\\/]/i.test(rawUrl);
+                    const normalizedInput = windowsPath
+                        ? `file:///${rawUrl.replace(/\\/g, '/')}`
+                        : rawUrl;
+                    url = new URL(normalizedInput, window.location.href);
+                } catch (error) {
+                    showModalError('有効なURLまたはファイルパスを入力してください。');
+                    return;
+                }
+                const isWebUrl = url.protocol === 'http:' || url.protocol === 'https:';
+                const isLocalFile = url.protocol === 'file:' && window.location.protocol === 'file:';
+                if (!isWebUrl && !isLocalFile) {
+                    showModalError('ローカルファイルのリンクは、このページをHTMLファイルとして開いた場合にのみ使えます。');
+                    return;
+                }
+                const label = document.getElementById('siteNameInput').value.trim() || url.hostname;
+                const link = document.createElement('a');
+                link.className = 'site-link';
+                link.href = url.href;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = label;
+                currentEditingWindow.querySelector('.content').appendChild(link);
+            } else if (currentEditingMode === 'delete') {
+                const deletedElement = currentEditingWindow;
+                if (!rememberDeletedWindow(deletedElement)) {
+                    showModalError('削除したウィンドウを保存できなかったため、削除を中止しました。');
+                    return;
+                }
+                deletedElement.remove();
+                closeEditModal();
+                if (!saveWindows()) {
+                    document.body.appendChild(deletedElement);
+                    forgetLatestDeletedWindow();
+                    showStatus('削除を保存できなかったため、ウィンドウは削除されませんでした。');
+                }
+                return;
+            }
+            closeEditModal();
+            saveWindows();
+        }
+
+        function showModalError(message) {
+            const errorElement = document.getElementById('modalError');
+            errorElement.textContent = message;
+            errorElement.hidden = false;
+        }
+
+        function showStatus(message) {
+            const statusElement = document.getElementById('appStatus');
+            statusElement.textContent = message;
+            statusElement.hidden = false;
+        }
+
+        function deleteWindow(windowElement) {
+            showEditModal(windowElement, 'delete');
+        }
+
+        function getWindowData(element) {
+            return {
+                title: element.querySelector('.window-title').textContent,
+                content: sanitizeContent(element.querySelector('.content').innerHTML),
+                left: element.dataset.layoutLeft ? Number(element.dataset.layoutLeft) : element.offsetLeft,
+                top: element.dataset.layoutTop ? Number(element.dataset.layoutTop) : element.offsetTop,
+                width: element.dataset.layoutWidth ? Number(element.dataset.layoutWidth) : element.offsetWidth,
+                height: element.dataset.layoutHeight ? Number(element.dataset.layoutHeight) : element.offsetHeight,
+                color: element.querySelector('.window-color-picker').value
+            };
+        }
+
+        function readDeletedWindows() {
+            try {
+                const deleted = JSON.parse(localStorage.getItem('deletedWindows') || '[]');
+                return Array.isArray(deleted) ? deleted : [];
+            } catch (error) {
+                console.error('削除したウィンドウの履歴を読み込めませんでした。', error);
+                showStatus('削除したウィンドウの復元データを読み込めませんでした。');
+                return [];
+            }
+        }
+
+        function rememberDeletedWindow(element) {
+            const deletedWindows = readDeletedWindows();
+            deletedWindows.push(getWindowData(element));
+            try {
+                localStorage.setItem('deletedWindows', JSON.stringify(deletedWindows.slice(-10)));
+                updateUndoButton();
+                return true;
+            } catch (error) {
+                console.error('削除したウィンドウの保存に失敗しました。', error);
+                showStatus('削除したウィンドウを保存できませんでした。');
+                return false;
+            }
+        }
+
+        function forgetLatestDeletedWindow() {
+            const deletedWindows = readDeletedWindows();
+            deletedWindows.pop();
+            try {
+                localStorage.setItem('deletedWindows', JSON.stringify(deletedWindows));
+            } catch (error) {
+                console.error('削除履歴を更新できませんでした。', error);
+                showStatus('削除履歴を更新できませんでした。');
+            }
+            updateUndoButton();
+        }
+
+        function updateUndoButton() {
+            document.getElementById('undoDeleteBtn').hidden = readDeletedWindows().length === 0;
+        }
+
+        function undoDelete() {
+            const deletedWindows = readDeletedWindows();
+            const deleted = deletedWindows.pop();
+            if (!deleted) {
+                updateUndoButton();
+                return;
+            }
+
+            try {
+                localStorage.setItem('deletedWindows', JSON.stringify(deletedWindows));
+            } catch (error) {
+                console.error('復元履歴を更新できませんでした。', error);
+                showStatus('復元履歴を更新できなかったため、ウィンドウを復元できませんでした。');
+                return;
+            }
+
+            const restoredElement = createWindow(
+                typeof deleted.title === 'string' ? deleted.title : 'New Window',
+                typeof deleted.content === 'string' ? deleted.content : '',
+                deleted.left, deleted.top, deleted.width, deleted.height,
+                deleted.color, false
+            );
+            if (!saveWindows()) {
+                restoredElement.remove();
+                deletedWindows.push(deleted);
+                try {
+                    localStorage.setItem('deletedWindows', JSON.stringify(deletedWindows));
+                } catch (error) {
+                    console.error('復元履歴を戻せませんでした。', error);
+                    showStatus('復元に失敗し、復元履歴も戻せませんでした。');
+                }
+            }
+            updateUndoButton();
+        }
+
+        function saveWindows() {
+            const savedWindows = Array.from(document.querySelectorAll('.window')).map(getWindowData);
+            try {
+                localStorage.setItem('windows', JSON.stringify(savedWindows));
+                return true;
+            } catch (error) {
+                console.error('ウィンドウの保存に失敗しました。', error);
+                showStatus('ウィンドウを保存できませんでした。ブラウザーの保存容量を確認してください。');
+                return false;
+            }
+        }
+
+        function loadWindows() {
+            let savedWindows;
+            try {
+                savedWindows = JSON.parse(localStorage.getItem('windows') || '[]');
+            } catch (error) {
+                console.error('保存済みウィンドウの読み込みに失敗しました。', error);
+                showStatus('保存データを読み込めませんでした。データが壊れている可能性があります。');
+                return;
+            }
+            if (!Array.isArray(savedWindows)) {
+                showStatus('保存データの形式が正しくありません。');
+                return;
+            }
+            savedWindows.forEach(item => {
+                if (!item || typeof item !== 'object') {
+                    return;
+                }
+                createWindow(
+                    typeof item.title === 'string' ? item.title : 'New Window',
+                    typeof item.content === 'string' ? item.content : '',
+                    item.left, item.top, item.width, item.height,
+                    item.color
+                );
+            });
+            updateUndoButton();
+        }
+
+        document.getElementById('addWindowBtn').addEventListener('click', () => createWindow());
+
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const bgImagePicker = document.getElementById('bgImagePicker');
+        const resetBgBtn = document.getElementById('resetBgBtn');
+
+        bgColorPicker.addEventListener('input', (e) => {
+            document.body.style.backgroundColor = e.target.value;
+            document.body.style.backgroundImage = '';
+            saveBgSettings();
+        });
+
+        bgImagePicker.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.body.style.backgroundImage = `url(${event.target.result})`;
+                    document.body.style.backgroundColor = '';
+                    saveBgSettings();
+                };
+                reader.onerror = () => {
+                    showStatus('背景画像を読み込めませんでした。別の画像を選択してください。');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        resetBgBtn.addEventListener('click', () => {
+            document.body.style.backgroundColor = '';
+            document.body.style.backgroundImage = '';
+            bgColorPicker.value = '#ffffff';
+            bgImagePicker.value = '';
+            saveBgSettings();
+        });
+
+        function saveBgSettings() {
+            try {
+                localStorage.setItem('bgColor', document.body.style.backgroundColor ? bgColorPicker.value : '');
+                localStorage.setItem('bgImage', document.body.style.backgroundImage);
+            } catch (error) {
+                console.error('背景設定の保存に失敗しました。', error);
+                showStatus('背景設定を保存できませんでした。画像のサイズが大きすぎる可能性があります。');
+            }
+        }
+
+        function normalizeColorPickerValue(color) {
+            if (/^#[0-9a-f]{6}$/i.test(color)) {
+                return color;
+            }
+            const rgb = color.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+            return rgb
+                ? `#${rgb.slice(1).map(value => Number(value).toString(16).padStart(2, '0')).join('')}`
+                : null;
+        }
+
+        function loadBgSettings() {
+            try {
+                const savedBgColor = localStorage.getItem('bgColor');
+                const savedBgImage = localStorage.getItem('bgImage');
+                if (savedBgColor) {
+                    document.body.style.backgroundColor = savedBgColor;
+                    const pickerValue = normalizeColorPickerValue(savedBgColor);
+                    if (pickerValue) {
+                        bgColorPicker.value = pickerValue;
+                    }
+                }
+                if (savedBgImage) {
+                    document.body.style.backgroundImage = savedBgImage;
+                }
+            } catch (error) {
+                console.error('保存済み背景設定の読み込みに失敗しました。', error);
+                showStatus('背景設定を読み込めませんでした。ブラウザーの保存データを確認してください。');
+            }
+        }
+
+        // モーダル関連のイベントリスナー
+        document.querySelector('.close').addEventListener('click', closeEditModal);
+        document.getElementById('saveEditBtn').addEventListener('click', saveEditContent);
+        document.getElementById('undoDeleteBtn').addEventListener('click', undoDelete);
+        window.addEventListener('click', (event) => {
+            if (event.target == document.getElementById('editModal')) {
+                closeEditModal();
+            }
+        });
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeEditModal();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            loadWindows();
+            loadBgSettings();
+        });
+    </script>
+</body>
+</html>
